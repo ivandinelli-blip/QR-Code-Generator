@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Label Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel-2:#1f232c;
+    --line:#2b3039;
+    --text:#e7ebf0;
+    --muted:#8a93a3;
+    --accent:#4ea1ff;
+    --accent-press:#2f86e8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 16px 60px;
+    gap:26px;
+  }
+
+  /* ---------- Control panel ---------- */
+  .panel{
+    width:100%;
+    max-width:520px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 22px 24px;
+    box-shadow:0 12px 40px rgba(0,0,0,.35);
+  }
+  .panel h1{
+    margin:0 0 2px;
+    font-size:18px;
+    letter-spacing:.3px;
+  }
+  .panel .sub{
+    margin:0 0 20px;
+    color:var(--muted);
+    font-size:12.5px;
+  }
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    margin-bottom:7px;
+  }
+  .field input{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:9px;
+    color:var(--text);
+    padding:11px 13px;
+    font-size:15px;
+    outline:none;
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .field input:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(78,161,255,.15);
+  }
+  .row{display:flex;gap:14px;}
+  .row .field{flex:1;}
+  .btn{
+    width:100%;
+    margin-top:6px;
+    background:var(--accent);
+    color:#04152b;
+    border:none;
+    border-radius:9px;
+    padding:13px;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.3px;
+    cursor:pointer;
+    transition:background .15s,transform .05s;
+  }
+  .btn:hover{background:var(--accent-press);color:#fff;}
+  .btn:active{transform:translateY(1px);}
+  .hint{
+    margin-top:14px;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+
+  /* ---------- Preview stage ---------- */
+  .stage-label{
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:-12px;
+  }
+  .preview-frame{
+    background:repeating-conic-gradient(#e9edf3 0% 25%, #f6f8fb 0% 50%) 0 0/22px 22px;
+    padding:24px;
+    border-radius:10px;
+  }
+
+  /* ---------- The actual label (2.5in x 2in) ---------- */
+  .label{
+    width:2.5in;
+    height:2in;
+    background:#fff;
+    color:#000;
+    display:flex;
+    align-items:center;
+    gap:0.16in;
+    padding:0.16in;
+    overflow:hidden;
+  }
+  .label .qr{
+    width:1.55in;
+    height:1.55in;
+    flex:0 0 1.55in;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .label .qr canvas,
+  .label .qr img{
+    width:100% !important;
+    height:100% !important;
+    display:block;
+  }
+  .label .meta{
+    flex:1;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .label .caption{
+    font-family:ui-sans-serif,Segoe UI,Roboto,Arial,sans-serif;
+    font-size:9pt;
+    font-weight:600;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#444;
+    margin-bottom:3px;
+  }
+  .label .empnum{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-weight:700;
+    line-height:1.05;
+    word-break:break-word;
+    font-size:16pt;
+  }
+  /* screen-only framing of the label */
+  .preview-frame .label{
+    box-shadow:0 6px 22px rgba(0,0,0,.28);
+    border-radius:3px;
+  }
+
+  /* ---------- Print ---------- */
+  #print-area{display:none;}
+
+  @media print{
+    @page{ size:2.5in 2in; margin:0; }
+    html,body{
+      margin:0;padding:0;background:#fff;display:block;min-height:0;
+    }
+    .no-print{ display:none !important; }
+    #print-area{ display:block; }
+    #print-area .label{
+      box-shadow:none;
+      border-radius:0;
+      page-break-after:always;
+      break-after:page;
+    }
+    #print-area .label:last-child{ page-break-after:auto; break-after:auto; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="panel no-print">
+    <h1>Employee Label Generator</h1>
+    <p class="sub">2.5&nbsp;&times;&nbsp;2&nbsp;in &middot; QR code + employee number</p>
+
+    <div class="field">
+      <label for="empnum">Employee Number</label>
+      <input id="empnum" type="text" placeholder="e.g. 100482" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label for="copies">Copies</label>
+      <input id="copies" type="number" min="1" max="100" value="1" />
+    </div>
+
+    <button class="btn" id="printBtn">Print Label</button>
+
+    <p class="hint">
+      The page size is set to <strong>2.5&times;2&nbsp;in</strong> with zero margins for a dedicated
+      label printer (one label per page). In the print dialog, set scale to <strong>100%</strong>
+      (not "Fit to page") and turn off headers/footers. The QR code encodes the employee number.
+    </p>
+  </div>
+
+  <div class="stage-label no-print">Actual&nbsp;size&nbsp;preview</div>
+  <div class="preview-frame no-print">
+    <div class="label" id="previewLabel">
+      <div class="qr" id="previewQR"></div>
+      <div class="meta">
+        <div class="empnum" id="previewNum">000000</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Labels rendered here for printing -->
+  <div id="print-area"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  function renderQR(container, text, px){
+    container.innerHTML = '';
+    new QRCode(container, {
+      text: text || ' ',
+      width: px,
+      height: px,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+
+  // Shrink the displayed number so long IDs always fit on the label
+  function fitNumber(el){
+    let size = 16; // pt
+    el.style.fontSize = size + 'pt';
+    // give layout a tick
+    while (el.scrollWidth > el.clientWidth && size > 7){
+      size -= 1;
+      el.style.fontSize = size + 'pt';
+    }
+  }
+
+  function updatePreview(){
+    const num = $('empnum').value.trim() || '000000';
+    $('previewNum').textContent = num;
+    renderQR($('previewQR'), num, 320);
+    fitNumber($('previewNum'));
+  }
+
+  function buildPrintLabels(){
+    const num = $('empnum').value.trim();
+    let copies = parseInt($('copies').value, 10);
+    if (isNaN(copies) || copies < 1) copies = 1;
+    if (copies > 100) copies = 100;
+
+    const area = $('print-area');
+    area.innerHTML = '';
+
+    for (let i = 0; i < copies; i++){
+      const label = document.createElement('div');
+      label.className = 'label';
+
+      const qr = document.createElement('div');
+      qr.className = 'qr';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const number = document.createElement('div');
+      number.className = 'empnum';
+      number.textContent = num;
+
+      meta.appendChild(number);
+      label.appendChild(qr);
+      label.appendChild(meta);
+      area.appendChild(label);
+
+      renderQR(qr, num, 600);
+      fitNumber(number);
+    }
+  }
+
+  $('printBtn').addEventListener('click', () => {
+    if (!$('empnum').value.trim()){
+      $('empnum').focus();
+      return;
+    }
+    buildPrintLabels();
+    // let QR canvases finish painting before opening the dialog
+    setTimeout(() => window.print(), 60);
+  });
+
+  $('empnum').addEventListener('input', updatePreview);
+
+  // initial render
+  updatePreview();
+</script>
+</body>
+</html>
